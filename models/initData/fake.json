@@ -3,22 +3,22 @@
         {
             "username": "小石头",
             "email": "zhuliminl@gmail.com",
-            "passwordHash": "123456"
+            "password": "123456"
         },
         {
             "username": "残风",
             "email": "canfeng@gmail.com",
-            "passwordHash": "123456"
+            "password": "123456"
         },
         {
             "username": "凝",
             "email": "ning@gmail.com",
-            "passwordHash": "123456"
+            "password": "123456"
         },
         {
             "username": "张强",
             "email": "zhangqiang@gmail.com",
-            "passwordHash": "123456"
+            "password": "123456"
         }
     ],
     "posts": [

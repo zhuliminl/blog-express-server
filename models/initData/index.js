@@ -26,10 +26,11 @@ module.exports = function(db) {
             const { users, posts, comments } = data;
 
             Promise.all(users.map(user => {
+                user.passwordHash = user.password;              // 勉强之举
                 return User
                     .create(user)
                     .then(user => user)
-                    .catch(err => { console.log(err) });
+                    .catch(err => { console.log('创建用户失败', err) });
             }))
                 .then(users => {
                     callback(null, users, posts, comments);              // 把数据对象摊开继续往下传,不过要注意这里 user 已经是数据库对象了。其他的还不是
