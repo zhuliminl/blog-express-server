@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
         User.hasMany(models.Comment, { as: 'comments', foreignKey: 'owner_id' });
 
         User.belongsToMany(User, { as: 'follower', through: 'Follows', foreignKey: 'follower_id' });    // 当前用户关注了很多人，属于另外一个用户的 follower
-        User.belongsToMany(User, { as: 'followed', through: 'Follows', foreignKey: 'followed_id' });    // 当前用户被很多人关注，属于另一个用户的 followed
+        User.belongsToMany(User, { as: 'following', through: 'Follows', foreignKey: 'following_id' });    // 当前用户正在被很多人关注，属于另一个用户的 following
     };
 
 

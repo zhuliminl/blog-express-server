@@ -1,15 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('./user.controller');
+const user = require('./user');
 
 const auth = require('../../lib/middlewars/auth');
+const idCheck = require('../../lib/middlewars/idCheck');
 
-router.get('/profile', auth, controller.getProfile);
-router.post('/profile', auth, controller.updateProfile);
-router.post('/follow', auth, controller.follow);
-router.post('/unfollow', auth, controller.unfollow);
-router.get('/followers/', auth, controller.getFollowers);
-router.get('/followed/', auth, controller.getFollowed);
+
+// 用户路由
+// http://www.foo.com/api/users
+router.get('/:id',      auth, user.getProfile);
+router.put('/:id',      auth, idCheck, user.updateProfile);
+
+// 用户关注路由
+router.post('/:id/followings/:followersId',         auth, idCheck, user.follow);
+router.delete('/:id/followings/:followersId',       auth, idCheck, user.unfollow);
+router.get('/:id/followings/',                      auth, user.getFollowings);
+router.get('/:id/followers/',                       auth, user.getFollowers);
+
 
 module.exports = router;
-

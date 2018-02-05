@@ -16,8 +16,12 @@ exports.getComment      = getComment;
 
 async function addComment(req, res) {
     const userId = req.userId;
-    const { postId, comment } = req.body;
-    if(postId && comment) {
+    // const postId = req.params.postId;
+    const postId = req.query.post_id;           // 明天早点继续。继续想想怎么按照 restful 的规范来设计
+
+    console.log(postId)
+    const { comment } = req.body;
+    if(comment) {
         // 在操作之前，需要判定登录用户是否拥有该文章
         try {
             const user = await User.findById(userId);

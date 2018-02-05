@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('./comment.controller');
+const comment = require('./comment.controller');
 
 const auth = require('../../lib/middlewars/auth');
 
-router.post('', auth, controller.addComment);           // http://www.foo.com/comment 的 post
-router.put('', auth, controller.updateComment);
-router.delete('', auth, controller.deleteComment);
-router.get('/:id', auth, controller.getComment);
+router.post('', auth, comment.addComment);
+router.put('', auth, comment.updateComment);
+router.delete('', auth, comment.deleteComment);
+router.get('/:id', auth, comment.getComment);
 
-module.exports = router;
-
+// 弃用。除非以后写 user/:id/comemnts 级别的路由，则会写在这个模块
+// module.exports = router;
