@@ -33,10 +33,10 @@ async function addArticle(req, res) {
         try {
             const user = await User.findById(userId);
             await user.createArticle({ title, body: article });
-            return res.send({ msg: 'add article success' });
+            return res.status(200).send({ message: 'add article success' });
         } catch(err) { console.log(err) };
     } else {
-        res.send({ err: '字段缺失' })
+        res.status(400).send({ message: '字段缺失' })
     }
 
 }
@@ -52,10 +52,10 @@ async function deleteArticle(req, res) {
         const post = await Post.find({ where: { id: postId, 'author_id': userId } });
 
         if(!post) {
-            return res.send({ err: 'post not found' })
+            return res.status(404).send({ message: 'post not found' })
         }
         post.destroy();
-        return res.send({ msg: 'article delete success' });
+        return res.status(200).send({ message: 'article delete success' });
     } catch(err) { console.log(err) };
 }
 
@@ -70,14 +70,14 @@ async function updateArticle(req, res) {
             const post = await Post.find({ where: { id: postId, 'author_id': userId } });
 
             if(!post) {
-                return res.send({ err: 'post not found' });
+                return res.status(404).send({ message: 'post not found' });
             }
 
             await post.update({ title, body: article });
-            return res.send({ msg: 'article update success' });
+            return res.status(200).send({ message: 'article update success' });
         } catch(err) { console.log(err) };
     } else {
-        res.send({ err: 'invalid data' });
+        res.status(400).send({ message: 'invalid data' });
     }
 }
 
@@ -90,21 +90,41 @@ async function getArticle(req, res) {
         const post = await Post.findById(postId);
 
         if(!post) {
-            return res.send({ err: 'post not found' });
+            return res.status(404).send({ message: 'post not found' });
         }
 
-        return res.send(post.dataValues);
+        return res.status(200).send(post.dataValues);
     } catch(err) { console.log(err) };
 }
 
 // 获取全部文章
 async function getArticles(req, res) {
     const userId = req.userId;
+    const slugNeeded = req.query['slug']
+
+    // 因为首页并不需要全部的文章内容，所以通过参数判断，给出一个只有带有 slug 的数据返回
+    if(slugNeeded === 'true') {
+        console.log('给出 slug 信息就可以了');
+        try {
+            const posts = await Post.findAll({
+                where: { 'author_id': userId },
+                attributes: {
+                    exclude: ['body']
+                }
+            });
+            return res.status(200).send(posts);
+        } catch(err) { console.log(err) };
+
+    }
 
     try {
-        // const user = await User.findById(userId);
-        // const posts = await user.getArticles();
-        const posts = await Post.findAll({ where: { 'author_id': userId } });       // 有意识地在保证可读性的同时减少数据库查询
-        return res.send(posts);
+        const posts = await Post.findAll({ 
+            where: { 'author_id': userId },
+            attributes: {
+                exclude: ['slug']
+            }
+        });       // 有意识地在保证可读性的同时减少数据库查询
+        return res.status(200).send(posts);
     } catch(err) { console.log(err) };
 }
+

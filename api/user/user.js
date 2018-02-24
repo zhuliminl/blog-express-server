@@ -16,8 +16,11 @@
 
 
 
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
 const db = require('../../models');
-const { User } = db;
+const { User, Post } = db;
+const R = require('ramda');
 
 exports.getProfile      = getProfile;
 exports.updateProfile   = updateProfile;
@@ -26,13 +29,29 @@ exports.follow          = follow;
 exports.unfollow        = unfollow;
 exports.getFollowers    = getFollowers;
 exports.getFollowings   = getFollowings;
+exports.getActivities   = getActivities;
 
 
 async function getProfile(req, res) {
     const userId = req.params.id;
     try {
-        const user = await User.findById(userId);
-        return res.send(user.dataValues)
+        const user = await User.find({
+            where: {
+                id: userId
+            },
+            attributes: {
+                exclude: ['password']                       // 排除密码的散列值
+            }
+        });
+        const followerCount = await user.getFollower().then(followers => followers.length);
+        const followingCount = await user.getFollowing().then(followings => followings.length);
+
+        const userProfile = {
+            ...user.dataValues,
+            followerCount,
+            followingCount
+        }
+        return res.status(200).send(userProfile);
     } catch(err) { console.log(err) }
 }
 
@@ -49,17 +68,17 @@ async function updateProfile(req, res) {
             const user = await User.findById(userId);
 
             if(!regUsername.test(username)) {
-                return res.send({ err: '用户名不符合要求' });
+                return res.status(400).send({ message: '用户名不符合要求' });
             }
             if(!regPassword.test(password)) {
-                return res.send({ err: '密码不符合要求' });
+                return res.status(400).send({ message: '密码不符合要求' });
             }
 
             await user.update({ username, password });
-            return res.send({ msg: 'update success' });
+            return res.status(200).send({ message: 'update success' });
         } catch(err) { console.log(err) };
     } else {
-        return res.send({ err: '字段不完整' });
+        return res.status(400).send({ message: '字段不完整' });
     }
 }
 
@@ -72,14 +91,14 @@ async function follow(req, res) {
         const followedUser = await User.findById(followedUserId);
 
         if(!followedUser) {                                         // 有可能发来的被关注用户根本不存在
-            return res.send({ err: 'no such user'})
+            return res.status(400).send({ message: 'no such user'})
         }
         if(await user.hasFollowing(followedUser)) {                  // 有可能已经关注过了
-            return res.send({ err: 'already followed' })
+            return res.status(400).send({ message: 'already followed' })
         }
 
         user.addFollowing(followedUser);                             // 注意在数据库添加时，我们使用的是属于关系。于是我关注了某人，就代表我成了某人的 follower
-        return res.send({ msg: 'followed success' });
+        return res.status(200).send({ message: 'followed success' });
     } catch(err) { console.log(err) };
 }
 
@@ -90,7 +109,7 @@ async function unfollow(req, res) {
         const user = await User.findById(userId);
         const followedUser = await User.findById(followedUserId);
         user.removeFollowing(followedUser);
-        return res.send({ msg: 'unfollowed success' });
+        return res.status(200).send({ message: 'unfollowed success' });
     } catch (err) { console.log(err) };
 }
 
@@ -99,9 +118,9 @@ async function getFollowings(req, res) {
     const userId = req.params.id;
     try {
         const user = await User.findById(userId);
-        const followings = await user.getFollowing().then(users => users.map(user => ({ username: user.username, emaili: user.email, id: user.id })));
+        const followings = await user.getFollowing().then(users => users.map(user => ({ username: user.username, avatarHash: user.avatarHash, id: user.id })));
         // 这里筛选了用户的信息，以后在定夺具体返回多少
-        return res.send(followings)
+        return res.status(200).send(followings)
     } catch(err) { console.log(err) };
 }
 
@@ -110,11 +129,60 @@ async function getFollowers(req, res) {
     const userId = req.params.id;
     try {
         const user = await User.findById(userId);
-        const followers = await user.getFollower().then(users => users.map(user => ({ username: user.username, emaili: user.email, id: user.id })));
-        return res.send(followers)
+        const followers = await user.getFollower().then(users => users.map(user => ({ username: user.username, avatarHash: user.avatarHash, id: user.id })));
+        return res.status(200).send(followers)
     } catch(err) { console.log(err) };
 
 }
+
+
+// 在所有的被关注的用户列表中，提取他们的 id 组成数组
+// 然后依据这些 id 找到所有的动态（其实是全部文章）集合。但是这个时候，这个集合中并没有我们需要的用户信息
+// 所有最后还需要给每个动态添加上该动态的用户信息
+async function getActivities(req, res) {
+    const userId = req.params.id;
+    try {
+        const user = await User.findById(userId);
+        // 还是很迷糊不懂
+        const postsOrigin = await User.findById(userId)
+                .then(user => {                                                     // 找到当前用户
+                    return user.getFollowing()                                             // 拿到他的所有的关注用户
+                        .then(users => {                                            // 对关注用户数组进行操作
+                            return Promise.all(                                     //
+                                users.map(user => user.getArticles()                // 取出每个被关注用户的文章数据
+                                            .then(posts => posts.map(post => ({
+                                                    id: post.id,
+                                                    title: post.title,
+                                                    slug: post.slug,
+                                                    authorId: post['author_id'],
+                                                })                                  // 对文章数据进行筛选
+                                            ))
+                                )
+                            )
+                        })
+                })
+
+        const posts = R.flatten(postsOrigin);
+
+        const users = await Promise.all(posts.map(post => User.findById(post.authorId).then(user => user.dataValues)))
+
+        const activities = posts.map((post, i)=> {
+            return {
+                user: users[i].username,
+                avatarHash: users[i].avatarHash,
+                title: post.title,
+            }
+        })
+
+        // console.log(posts)
+        // console.log(activities)
+
+        return res.send(activities)
+    } catch(err) { console.log(err) };
+    return res.send('ok')
+
+}
+
 
 // 以下暂时可以不提供
 // 登出用户
@@ -126,3 +194,15 @@ async function logout(req, res) {
 async function destroy(req, res) {
 
 }
+
+
+// 为了调试，自动关注一些用户。记得删除
+    setTimeout(async function()  {
+        const user = await User.findById(1);
+        const followedIds = [1, 2, 3, 4]
+        const foo = await Promise.all(followedIds.map(async id => {
+            const followed = await User.findById(id);
+            user.addFollowing(followed);
+            return followed;
+        }))
+    }, 1000)

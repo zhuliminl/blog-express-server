@@ -8,6 +8,6 @@ module.exports = function(app) {
 
 
     app.use('/*', function(req, res, next) {
-        res.json({ status: 'success', data: '请求虽然成功，但是大概不是你想要的'})
+        res.status(200).send({ message: '请求虽然成功，但是大概不是你想要的'})
     })
 }

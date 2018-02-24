@@ -26,14 +26,14 @@ async function getComments(req, res) {
         try {
             const post = await Post.findById(postId);
             if(!post) {
-                return res.send({ err: 'no such post' });
+                return res.status(404).send({ message: 'no such post' });
             }
             const comments = await post.getComments();
-            return res.send(comments);
+            return res.status(200).send(comments);
         } catch(err) { console.log(err) };
 
     } else {
-        res.send({ err: 'invalid data' });
+        res.status(400).send({ message: 'invalid data' });
     }
 }
 
@@ -49,16 +49,16 @@ async function addComment(req, res) {
             if(post) {
 				// 在新的评论中还要添加上是谁创建了这条评论
                 const newComment = await post.createComment({ body: comment, 'owner_id': userId });
-                return res.send({ msg: 'comment added'})
+                return res.status(200).send({ message: 'comment added'})
 
             } else {
-                res.send({ err: 'No such post' })
+                res.status(404).send({ message: 'no such post' })
             }
 
         } catch(err) { console.log(err) };
 
     } else {
-        res.send({ err: 'invalid data' })
+        res.status(400).send({ message: 'invalid data' })
     }
 }
 
@@ -75,15 +75,15 @@ async function updateComment(req, res) {
             const theComment = await Comment.find({ where: { id: commentId, 'owner_id': userId } });
             if(theComment) {
                 theComment.update({ body: comment });               // 更新该评论
-                return res.send({ meg: 'comment update success' })
+                return res.status(200).send({ message: 'comment update success' })
             } else {
-                return res.send({ err: 'user has no such comment' })
+                return res.status(404).send({ message: 'user has no such comment' })
             }
 
         } catch(err) { console.log(err) };
 
     } else {
-        res.send({ err: 'invalid data' })
+        res.status(400).send({ message: 'invalid data' })
     }
 }
 
@@ -96,15 +96,15 @@ async function deleteComment(req, res) {
             if(theComment) {
                 // user.removeComment(theComment);                  // 在用户的实例上删除了评论，但是对于文章并没有切断联系
                 theComment.destroy();                               // 使用自毁方法则关系全都会被切断
-                return res.send({ meg: 'comment delete success' })
+                return res.status(200).send({ message: 'comment delete success' })
             } else {
-                return res.send({ err: 'user has no such comment' })
+                return res.status(404).send({ message: 'user has no such comment' })
             }
 
         } catch(err) { console.log(err) };
 
     } else {
-        res.send({ err: 'invalid data' })
+        res.status(400).send({ message: 'invalid data' })
     }
 
 }
@@ -117,9 +117,9 @@ async function getComment(req, res) {
     try {
         const theComment = await Comment.find({ where: { id: commentId, 'owner_id': userId } });
         if(theComment) {
-            return res.send(theComment.dataValues)
+            return res.status(200).send(theComment.dataValues)
         } else {
-            return res.send({ err: 'no such comment' })
+            return res.status(404).send({ message: 'no such comment' })
         }
 
     } catch(err) { console.log(err) };

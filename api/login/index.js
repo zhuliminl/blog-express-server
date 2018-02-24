@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken')
 const db = require('../../models');
 
 const { User } = db;
-const SECRET = 'skdjflksdjflksjdlkfjskldjflksdjflksdjkfjsdkf';
+const SECRET = 'foobarfoobar';
 
 module.exports = login;
 
@@ -20,13 +20,11 @@ async function login(req, res) {
 
             if(err) {
                 if(err.name === 'TokenExpiredError') {
-                    res.send({ err: 'refreshToken expired' })
-                    return;
+                    return res.status(400).send({ message: 'refreshToken expired' })
                 }
                 console.log(err.name)
                 if(err.name === 'JsonWebTokenError') {
-                    res.send({ err: 'invalid refreshToken' })
-                    return;
+                    return res.status(400).send({ message: 'invalid refreshToken' })
                 }
             }
 
@@ -35,21 +33,21 @@ async function login(req, res) {
             const { token, refreshToken } =  createTokens(id, SECRET);      // 刷新这两个 token
             res.set('x-token', token);
             res.set('x-refresh-token', refreshToken);
-            res.send({ msg : 'token refreshed, please resend your request' });      // 提醒重新发送业务请求
+            res.status(400).send({ message : 'token refreshed, please resend your request' });      // 提醒重新发送业务请求
         })
         return;
     }
 
     const { email, password } = req.body;
-
+    // 这里的处理顺序是有问题的
+    // 应该先处理用户的判断，再来对比密码认证
     if(validate(email, password)) {                 // 如果验证密码成功，这个随时都可以写
-
     }
 
     try {
         const user = await User.findOne({ where: { email: email } });
         if(!user) {
-            return res.send({ err: 'user not found' })
+            return res.status(404).send({ message: 'user not found'})
         }
 
         // 创建 refreshToken 和 token
@@ -57,7 +55,10 @@ async function login(req, res) {
 
         res.set('x-token', token);
         res.set('x-refresh-token', refreshToken);
-        res.send({ msg: 'login success' });
+        res.status(200).send({
+            message: 'login success',
+            userId: user.id
+        });
 
     } catch(err) {
         console.log(err);
@@ -71,8 +72,8 @@ async function login(req, res) {
  * @return Object 两个 Token
  */
 function createTokens(userId, SECRET) {
-    const token = jwt.sign({ id: userId }, SECRET, { expiresIn: '5d' });
-    const refreshToken = jwt.sign({ id: userId }, SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId }, SECRET, { expiresIn: '50d' });
+    const refreshToken = jwt.sign({ id: userId }, SECRET, { expiresIn: '70d' });
     return {
         token,
         refreshToken

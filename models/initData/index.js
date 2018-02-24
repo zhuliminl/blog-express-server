@@ -41,6 +41,28 @@ module.exports = function(db) {
         // 给第一个用户添加一些文章和评论，还要把评论附属给第一个用户
         function(users, posts, comments, callback) {
             const firstUser = users[0];
+            const secondtUser = users[1];
+
+            // 给第二个也加一点
+            Promise.all(posts.map(post => {
+                return secondtUser
+                    .createArticle(post)
+                    .then(post => post)
+                    .catch(err => console.log(err));
+            }))
+                .then(posts => {
+                    const firstPost = posts[0];
+                    firstPost.createComment(comments[1])
+                        .then(comment => {
+                        })
+                    // 在这里添加也行
+                    firstPost.createComment(comments[2])
+                        .then(comment => {
+                            // console.log(comment.createCreator({ name: 'foo', email: 'foo@gmail.com', 'passwordHash': 'foo'}))   // create 是按普通对象添加
+                            comment.setCreator(secondtUser)
+                        })
+                })
+                .catch(err => console.log(err));
 
             Promise.all(posts.map(post => {
                 return firstUser

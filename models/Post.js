@@ -2,8 +2,14 @@ module.exports =  (sequelize, DataTypes) => {
     const Post = sequelize.define('Post', {
         title: DataTypes.STRING,
         body: DataTypes.TEXT,
+        slug: DataTypes.TEXT,
     }, {
-        timestamps: false
+        // timestamps: false,
+        hooks: {
+            beforeValidate: function(post) {
+                post.slug = setSlug(post.body);
+            }
+        }
     });
 
     Post.associate = (models) => {
@@ -13,3 +19,7 @@ module.exports =  (sequelize, DataTypes) => {
     return Post;
 }
 
+
+function setSlug(text) {
+    return text.match(/^[^.。"“！\!\?？]+/g)[0];                 // 暂时就这个正则吧
+}

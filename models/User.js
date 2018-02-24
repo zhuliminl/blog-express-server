@@ -1,15 +1,22 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
         username: DataTypes.STRING,
         email: DataTypes.STRING,
-        password: DataTypes.STRING
+        password: DataTypes.STRING,
+        avatarHash: DataTypes.STRING,
+        aboutMe: {
+            type: DataTypes.STRING,
+            defaultValue: '这人很懒，什么都没留下'
+        }
     }, {
         timestamps: false,
         hooks: {
             beforeValidate: function(user) {        // 其实这个时候传过来的 user.passwordHash 还是 password 原始值
-                user.password = bcrypt.hashSync(user.password, 8)
+                user.password = bcrypt.hashSync(user.password, 8);
+                user.avatarHash = crypto.createHash('md5').update(user.email, 'utf8').digest('hex');     // 生成头像散列值
             }
         }
     });

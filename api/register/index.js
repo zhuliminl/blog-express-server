@@ -25,7 +25,7 @@ async function register(req, res) {
     try {
         const user = await User.findOne({ where: { email: email } });
         if(user) {
-            return res.send({ err: '该用户已经被占用'})
+            return res.status(400).send({ message: '该用户已经被占用'})
         }
 
     } catch(err) {
@@ -36,17 +36,17 @@ async function register(req, res) {
 
         // 验证字段
         if(!regUsername.test(username)) {
-            return res.send({ err: '用户名不符合要求' });
+            return res.status(400).send({ message: '用户名不符合要求' });
         };
         if(!regEmail.test(email)) {
-            return res.send({ err: '邮箱不符合要求' });
+            return res.status(400).send({ message: '邮箱不符合要求' });
         };
         if(!regPassword.test(password)) {
-            return res.send({ err: '密码不符合要求'});
+            return res.status(400).send({ message: '密码不符合要求'});
         }
 
     } else {
-        return res.send({ err: '字段不完整' })
+        return res.status(400).send({ message: '字段不完整' })
     }
 
     const newUser = {
@@ -59,5 +59,5 @@ async function register(req, res) {
     } catch(err) {
         console.log(err)
     }
-    res.send({ msg: 'register success' })
+    res.status(200).send({ message: 'register success' })
 }
