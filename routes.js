@@ -1,9 +1,9 @@
 module.exports = function(app) {
-    app.use('/test', require('./api/initData'));
-    app.use('/users', require('./api/user'));
-    app.post('/login', require('./api/login'));
-    app.post('/register', require('./api/register'));
-    app.use('/posts', require('./api/post'));
+    app.use('/api/test', require('./api/initData'));
+    app.use('/api/users', require('./api/user'));
+    app.post('/api/login', require('./api/login'));
+    app.post('/api/register', require('./api/register'));
+    app.use('/api/posts', require('./api/post'));
     // app.use('/comments', require('./api/comment'));              // 弃用。改在 /posts 路由下实现
 
 
