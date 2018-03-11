@@ -16,7 +16,7 @@ router.post('/:id/followings/:followersId',         auth, idCheck, user.follow);
 router.delete('/:id/followings/:followersId',       auth, idCheck, user.unfollow);
 router.get('/:id/followings/',                      auth, user.getFollowings);
 router.get('/:id/followers/',                       auth, user.getFollowers);
-router.get('/:id/activities/',                      auth, idCheck, user.getActivities);
+router.get('/:id/activities/',                      auth, user.getActivities);
 
 
 module.exports = router;

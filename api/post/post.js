@@ -32,8 +32,13 @@ async function addArticle(req, res) {
     if(title && article) {
         try {
             const user = await User.findById(userId);
-            await user.createArticle({ title, body: article });
-            return res.status(200).send({ message: 'add article success' });
+            const post = await user.createArticle({ title, body: article });
+            return res.status(200).send(
+                    {
+                        message: '文章发布成功',
+                        postId: post.id
+                    }
+                );
         } catch(err) { console.log(err) };
     } else {
         res.status(400).send({ message: '字段缺失' })
@@ -74,10 +79,10 @@ async function updateArticle(req, res) {
             }
 
             await post.update({ title, body: article });
-            return res.status(200).send({ message: 'article update success' });
+            return res.status(200).send({ message: '文章更新成功' });
         } catch(err) { console.log(err) };
     } else {
-        res.status(400).send({ message: 'invalid data' });
+        res.status(400).send({ message: '文章字段缺失' });
     }
 }
 
@@ -99,32 +104,36 @@ async function getArticle(req, res) {
 
 // 获取全部文章
 async function getArticles(req, res) {
-    const userId = req.userId;
+    const targetUserId = req.query['user'];
     const slugNeeded = req.query['slug']
+
+    if(!targetUserId) {
+        return res.status(404).send({ message: 'user not found' })
+    }
 
     // 因为首页并不需要全部的文章内容，所以通过参数判断，给出一个只有带有 slug 的数据返回
     if(slugNeeded === 'true') {
         console.log('给出 slug 信息就可以了');
         try {
             const posts = await Post.findAll({
-                where: { 'author_id': userId },
+                where: { 'author_id': targetUserId },
                 attributes: {
                     exclude: ['body']
                 }
             });
-            return res.status(200).send(posts);
+            return res.status(200).send(posts.reverse());
         } catch(err) { console.log(err) };
 
     }
 
     try {
-        const posts = await Post.findAll({ 
-            where: { 'author_id': userId },
+        const posts = await Post.findAll({
+            where: { 'author_id': targetUserId },
             attributes: {
                 exclude: ['slug']
             }
         });       // 有意识地在保证可读性的同时减少数据库查询
-        return res.status(200).send(posts);
+        return res.status(200).send(posts.reverse());
     } catch(err) { console.log(err) };
 }
 

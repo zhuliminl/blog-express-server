@@ -33,8 +33,10 @@ exports.getActivities   = getActivities;
 
 
 async function getProfile(req, res) {
+    const loginedUserId = req.userId;
     const userId = req.params.id;
     try {
+        const loginedUser = await User.findById(loginedUserId);
         const user = await User.find({
             where: {
                 id: userId
@@ -49,7 +51,8 @@ async function getProfile(req, res) {
         const userProfile = {
             ...user.dataValues,
             followerCount,
-            followingCount
+            followingCount,
+            isFollowing: await loginedUser.hasFollowing(user)
         }
         return res.status(200).send(userProfile);
     } catch(err) { console.log(err) }
@@ -91,14 +94,14 @@ async function follow(req, res) {
         const followedUser = await User.findById(followedUserId);
 
         if(!followedUser) {                                         // 有可能发来的被关注用户根本不存在
-            return res.status(400).send({ message: 'no such user'})
+            return res.status(400).send({ message: '找不到该用户'})
         }
         if(await user.hasFollowing(followedUser)) {                  // 有可能已经关注过了
-            return res.status(400).send({ message: 'already followed' })
+            return res.status(400).send({ message: '你已经关注该用户，无需再关注' })
         }
 
         user.addFollowing(followedUser);                             // 注意在数据库添加时，我们使用的是属于关系。于是我关注了某人，就代表我成了某人的 follower
-        return res.status(200).send({ message: 'followed success' });
+        return res.status(200).send({ message: '关注成功' });
     } catch(err) { console.log(err) };
 }
 
@@ -109,75 +112,148 @@ async function unfollow(req, res) {
         const user = await User.findById(userId);
         const followedUser = await User.findById(followedUserId);
         user.removeFollowing(followedUser);
-        return res.status(200).send({ message: 'unfollowed success' });
+        return res.status(200).send({ message: '取消关注成功' });
     } catch (err) { console.log(err) };
 }
 
-// 获取我关注的人的名单
+// 之前写错了。只考虑了你我这两种关系
+// 当我们浏览一个普通用户的关注列表时候，对方的关注列表中人(可以称之为第三方用户）的关注和不关注状态，应该是和当前登录的我之间的关系
+// 而不是第三方和这个普通用户
+// 简单说：这里有三个参与者，即你我他
 async function getFollowings(req, res) {
-    const userId = req.params.id;
+    const loginedUserId = req.userId;
+    const targetUserId = req.params.id;
     try {
-        const user = await User.findById(userId);
-        const followings = await user.getFollowing().then(users => users.map(user => ({ username: user.username, avatarHash: user.avatarHash, id: user.id })));
-        // 这里筛选了用户的信息，以后在定夺具体返回多少
+        const targetUser = await User.findById(targetUserId);
+        const loginedUser = await User.findById(loginedUserId);
+
+        const followinigsList = await targetUser.getFollowing();
+        const followings = await Promise.all(followinigsList.map(async targetUser => {
+                            return {
+                                id: targetUser.id,
+                                username: targetUser.username,
+                                avatarHash: targetUser.avatarHash,
+                                isFollowing: await loginedUser.hasFollowing(targetUser)
+                            }
+                        }
+                    )
+                )
+
         return res.status(200).send(followings)
     } catch(err) { console.log(err) };
 }
 
-// 获取关注我的人的名单
 async function getFollowers(req, res) {
-    const userId = req.params.id;
+    const loginedUserId = req.userId;
+    const targetUserId = req.params.id;
     try {
-        const user = await User.findById(userId);
-        const followers = await user.getFollower().then(users => users.map(user => ({ username: user.username, avatarHash: user.avatarHash, id: user.id })));
+        const targetUser = await User.findById(targetUserId);
+        const loginedUser = await User.findById(loginedUserId);
+
+        const followersList = await targetUser.getFollower();
+        const followers = await Promise.all(followersList.map(async targetUser => {
+                            return {
+                                id: targetUser.id,
+                                username: targetUser.username,
+                                avatarHash: targetUser.avatarHash,
+                                isFollowing: await loginedUser.hasFollowing(targetUser)
+                            }
+                        }
+                    )
+                )
+
         return res.status(200).send(followers)
     } catch(err) { console.log(err) };
+
+    // const userId = req.params.id;
+    // try {
+        // const user = await User.findById(userId);
+        // // const followers = await user.getFollower().then(users => users.map(user => ({ username: user.username, avatarHash: user.avatarHash, id: user.id })));
+
+
+        // // 在我被其他用户关注的列表中，并没有体现我是否正在关注其他人（可以称之为目标用户）
+        // // 所以如果想让列表更丰富一点，有必要在关注列表中返回我和目标用户的关系
+        // // 这样才能更好地发起我与目标用户的关注和解关注这两个动作
+        // // 在获取我正在关注的人的函数中，可以简单地返回 isFolloing 永远为 True
+        // // 但是在获取我被他人关注的函数中，则需要一个进行判断后才能返回具体数据
+
+        // const followersList = await user.getFollower();                             // 至于这里的命名，还是倾向于用户字数多描述来限定更少的信息
+                                                                                    // // 所以，followers 应该一直用来陈放可能偏多的不确定的返回信息比较好
+                                                                                    // // 即便其他地方用 foos 来表达了更确切的信息，但是由于需求不同
+                                                                                    // // foos 也可以就是 foosList
+                                                                                    // // 好吧。这个注释很无聊。记得删除
+        // const followers = await Promise.all(followersList.map(async targetUser => {
+                                // const user = await User.findById(userId);           // 获取当前用户，用户下面判断和目标用户的关系
+                                // return {
+                                    // id: targetUser.id,
+                                    // username: targetUser.username,
+                                    // avatarHash: targetUser.avatarHash,
+                                    // isFollowing: await user.hasFollowing(targetUser)
+                                // }
+                            // }
+                        // )
+                    // );
+
+        // return res.status(200).send(followers)
+    // } catch(err) { console.log(err) };
 
 }
 
 
-// 在所有的被关注的用户列表中，提取他们的 id 组成数组
-// 然后依据这些 id 找到所有的动态（其实是全部文章）集合。但是这个时候，这个集合中并没有我们需要的用户信息
-// 所有最后还需要给每个动态添加上该动态的用户信息
+// 拿到被关注的用户列表
+// 取出每个用户的文章。然后专门提取出需要的数据。
+// 这个时候的数据结构是数组中有数组，数据需要被摊平后继续使用
+// 根据每个文章的作者 ID ，从数据库中取出该 ID 的用户信息
+// 最后把文章的数据和用户的数据合并，组成前端需要的动态信息
 async function getActivities(req, res) {
     const userId = req.params.id;
     try {
         const user = await User.findById(userId);
-        // 还是很迷糊不懂
-        const postsOrigin = await User.findById(userId)
-                .then(user => {                                                     // 找到当前用户
-                    return user.getFollowing()                                             // 拿到他的所有的关注用户
-                        .then(users => {                                            // 对关注用户数组进行操作
-                            return Promise.all(                                     //
-                                users.map(user => user.getArticles()                // 取出每个被关注用户的文章数据
-                                            .then(posts => posts.map(post => ({
-                                                    id: post.id,
-                                                    title: post.title,
-                                                    slug: post.slug,
-                                                    authorId: post['author_id'],
-                                                })                                  // 对文章数据进行筛选
-                                            ))
-                                )
-                            )
-                        })
-                })
+        const followings = await user.getFollowing();
+        const postsOrigin = await Promise.all(followings.map(user =>
+                                        user.getArticles()
+                                            .then(posts => posts.map(
+                                                post => {
+                                                    return {
+                                                        id: post.id,
+                                                        title: post.title,
+                                                        slug: post.slug,
+                                                        authorId: post['author_id'],
+                                                    }
+                                                }
+                                            )
+                                        )
+                                    )
+                                );
 
-        const posts = R.flatten(postsOrigin);
+        const posts = R.flatten(postsOrigin);           // 摊平数据
 
-        const users = await Promise.all(posts.map(post => User.findById(post.authorId).then(user => user.dataValues)))
+        const authors = await Promise.all(posts.map(post =>
+                                            User.findById(post.authorId)
+                                                .then(user => {
+                                                    return {
+                                                        userId: user.id,
+                                                        username: user.username,
+                                                        avatarHash: user.avatarHash,
+                                                    }
+                                                }
+                                            )
+                                        )
+                                    );
 
         const activities = posts.map((post, i)=> {
-            return {
-                user: users[i].username,
-                avatarHash: users[i].avatarHash,
-                title: post.title,
-            }
-        })
+                                    return {
+                                        authorId: authors[i].userId,
+                                        author: authors[i].username,
+                                        avatarHash: authors[i].avatarHash,
+                                        postId: post.id,
+                                        title: post.title,
+                                    }
+                                }
+                            );
 
-        // console.log(posts)
-        // console.log(activities)
+        return res.status(200).send(activities.reverse());          // 以后再改成按照更新时间排序
 
-        return res.send(activities)
     } catch(err) { console.log(err) };
     return res.send('ok')
 
@@ -199,10 +275,13 @@ async function destroy(req, res) {
 // 为了调试，自动关注一些用户。记得删除
     setTimeout(async function()  {
         const user = await User.findById(1);
-        const followedIds = [1, 2, 3, 4]
+        const followedIds = [1, 3, 4]
         const foo = await Promise.all(followedIds.map(async id => {
             const followed = await User.findById(id);
             user.addFollowing(followed);
             return followed;
         }))
+        const canfeng = await User.findById(2);
+        canfeng.addFollowing(user);
+
     }, 1000)
