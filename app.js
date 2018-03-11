@@ -7,6 +7,12 @@ var bodyParser = require('body-parser');
 
 var app = express();
 
+// 部署前端
+app.use(express.static(path.join(__dirname, '../client/build')));
+app.get('/', function(req, res) {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+})
+
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
