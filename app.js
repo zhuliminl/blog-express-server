@@ -7,7 +7,7 @@ var bodyParser = require('body-parser');
 
 var app = express();
 
-// 部署前端
+// 部署前端。原来并不需要单独的前端静态页面的服务器
 app.use(express.static(path.join(__dirname, '../client/build')));
 app.get('/', function(req, res) {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
