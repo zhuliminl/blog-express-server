@@ -8,7 +8,7 @@ const sequelize = new Sequelize(
     {
         host: 'localhost',
         dialect: 'mysql',
-        charset: 'utf8',
+        charset: 'utf8',                    // 支持中文编码
         dialectOptions: {
           collate: 'utf8_general_ci'
         },
